@@ -1,0 +1,12 @@
+# What the two workshop notebooks need, for running them on your own computer.
+# Colab does not use this file: the setup cell installs what it needs.
+mujoco>=3.1
+casadi>=3.6
+numpy
+matplotlib
+imageio[ffmpeg]
+do-mpc            # exercises 0a and 0b only
+pillow
+ipython
+ipykernel
+jupyterlab

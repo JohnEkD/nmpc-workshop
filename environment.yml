@@ -1,0 +1,20 @@
+# Anaconda environment for the two workshop notebooks.
+#   conda env create -f environment.yml
+#   conda activate nmpc-workshop
+name: nmpc-workshop
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - numpy
+  - matplotlib
+  - pillow
+  - ffmpeg
+  - ipython
+  - ipykernel
+  - jupyterlab
+  - pip
+  - pip:
+      - mujoco>=3.1
+      - casadi>=3.6
+      - imageio[ffmpeg]
