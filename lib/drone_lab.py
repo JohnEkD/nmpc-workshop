@@ -957,7 +957,8 @@ def compare_runs(log, reference=None, labels=("this flight", "the first flight")
     goal = GOAL if goal is None else np.asarray(goal, float)
     fig, (a1, a2, a3) = plt.subplots(1, 3, figsize=(15.5, 4.4),
                                      gridspec_kw={"width_ratios": [1.15, 1, 1]})
-    tilt_axis = a2.twinx()
+    tilt_axis = a2.twinx()                       # the tilt has its own scale
+    thrust_colour, tilt_colour = "#e07b39", "#7a4fa3"
     for lg, colour, name, wide in ((reference, "0.62", labels[1], 3.4),
                                    (log, BLUE, labels[0], 2.2)):
         if lg is None:
@@ -965,28 +966,41 @@ def compare_runs(log, reference=None, labels=("this flight", "the first flight")
         S, U = lg["state"], np.asarray(lg["u"], float)
         T = np.asarray(lg["t"], float) if "t" in lg else np.arange(len(U)) * DT
         a1.plot(S[:, 0], S[:, 1], lw=wide, color=colour, label=name)
-        a2.plot(T, U[:, 0], lw=wide, color=colour, label=name + ": rear")
-        a2.plot(T, U[:, 1], lw=wide, color=colour, ls=(0, (4, 2)),
-                label=name + ": front")
-        tilt_axis.plot(T, S[:len(T), 2], lw=wide * 0.8, color=colour,
-                       ls=(0, (1, 2)), label=name + ": tilt")
+        first = lg is reference
+        a2.plot(T, U[:, 0], lw=wide, color="0.62" if first else thrust_colour,
+                label=("the first flight" if first else name) + ": rear")
+        a2.plot(T, U[:, 1], lw=wide, color="0.62" if first else thrust_colour,
+                ls=(0, (4, 2)),
+                label=("the first flight" if first else name) + ": front")
+        tilt_axis.plot(T, S[:len(T), 2], lw=wide * 0.8,
+                       color="0.62" if first else tilt_colour, ls=(0, (1, 2)),
+                       label=("the first flight" if first else name) + ": tilt")
         gap = np.linalg.norm(S[:len(T), :2] - goal[:2], axis=1)
         a3.plot(T, gap, lw=wide, color=colour, label=name)
     draw_scene(a1, goal=goal)
     a1.set_title("where it flew", fontsize=10)
     a1.legend(loc="lower left", fontsize=8)
 
-    a2.axhline(TMAX_PAIR, color="#c0392b", lw=1, ls=(0, (2, 3)))
-    a2.axhline(0, color="#c0392b", lw=1, ls=(0, (2, 3)))
+    a2.axhline(TMAX_PAIR, color=thrust_colour, lw=1, ls=(0, (2, 3)))
+    a2.axhline(0, color=thrust_colour, lw=1, ls=(0, (2, 3)))
     a2.axhline(hover_thrust(), color="0.4", lw=1, ls=(0, (1, 3)))
     a2.text(0.05, hover_thrust() + 0.4, "hover", fontsize=8, color="0.4")
-    a2.set_xlabel("time (s)"); a2.set_ylabel("thrust per pair (N)")
-    a2.set_title("what it was told to do, and how it tilted", fontsize=10)
-    a2.legend(fontsize=8, loc="upper right"); a2.grid(alpha=0.25)
-    tilt_axis.set_ylabel("tilt (rad), dotted")
-    tilt_axis.axhline(PITCH_MAX, color="#7a4fa3", lw=1, ls=(0, (2, 3)))
-    tilt_axis.axhline(-PITCH_MAX, color="#7a4fa3", lw=1, ls=(0, (2, 3)))
+    a2.set_xlabel("time (s)")
+    a2.set_ylabel("thrust per pair (N): rear solid, front dashed",
+                  color=thrust_colour)
+    a2.tick_params(axis="y", labelcolor=thrust_colour)
+    a2.set_ylim(-TMAX_PAIR * 0.1, TMAX_PAIR * 1.15)
+    a2.set_title("what it was told to do, and how it tilted (limits dotted)",
+                 fontsize=10)
+    tilt_axis.set_ylabel("tilt (rad), dotted line", color=tilt_colour)
+    tilt_axis.tick_params(axis="y", labelcolor=tilt_colour)
+    tilt_axis.axhline(PITCH_MAX, color=tilt_colour, lw=1, ls=(0, (2, 3)))
+    tilt_axis.axhline(-PITCH_MAX, color=tilt_colour, lw=1, ls=(0, (2, 3)))
     tilt_axis.set_ylim(-PITCH_MAX * 1.3, PITCH_MAX * 1.3)
+    lines = a2.get_lines() + tilt_axis.get_lines()
+    keep = [ln for ln in lines if ln.get_label() and not ln.get_label().startswith("_")]
+    a2.legend(keep, [ln.get_label() for ln in keep], fontsize=7.5, loc="upper right")
+    a2.grid(alpha=0.25)
 
     a3.axhline(0.05, color=GREEN, lw=1, ls=(0, (2, 3)))
     a3.text(0.05, 0.057, "at the goal", fontsize=8, color=GREEN)

@@ -851,27 +851,42 @@ def compare_runs(log, reference=None, labels=("this run", "the first run"),
     """The path, the commands and the distance to the goal, against a first run."""
     fig, (a1, a2, a3) = plt.subplots(1, 3, figsize=(15.5, 4.4),
                                      gridspec_kw={"width_ratios": [1.15, 1, 1]})
+    turn_axis = a2.twinx()                       # the turn rate has its own scale
+    speed_colour, turn_colour = "#1a5fb4", "#7a4fa3"
     for lg, colour, name, wide in ((reference, "0.62", labels[1], 3.4),
                                    (log, "#c0392b", labels[0], 2.2)):
         if lg is None:
             continue
         P, C, T = lg["pose"], lg["cmd"], np.asarray(lg["t"], float)
         a1.plot(P[:, 0], P[:, 1], lw=wide, color=colour, label=name)
-        a2.plot(T, C[:, 0], lw=wide, color=colour, label=name + ": speed")
-        a2.plot(T, C[:, 1], lw=wide, color=colour, ls=(0, (4, 2)),
-                label=name + ": turn rate")
+        first = lg is reference
+        a2.plot(T, C[:, 0], lw=wide, color="0.62" if first else speed_colour,
+                label=("the first run" if first else name) + ": speed")
+        turn_axis.plot(T, C[:, 1], lw=wide, color="0.62" if first else turn_colour,
+                       ls=(0, (4, 2)),
+                       label=("the first run" if first else name) + ": turn rate")
         gap = np.linalg.norm(P[:len(T), :2] - np.array(GOAL), axis=1)
         a3.plot(T, gap, lw=wide, color=colour, label=name)
     draw_room(a1, label=False)
     a1.set_title("where it went", fontsize=10)
     a1.legend(loc="lower right", fontsize=8)
 
-    for limit, style in ((V_MAX, "-"), (W_MAX, "-")):
-        for sign in (1, -1):
-            a2.axhline(sign * limit, color="#c0392b", lw=1, ls=(0, (2, 3)))
-    a2.set_xlabel("time (s)"); a2.set_ylabel("command")
-    a2.set_title("what it was told to do (limits dotted)", fontsize=10)
-    a2.legend(fontsize=8, loc="lower right"); a2.grid(alpha=0.25)
+    for sign in (1, -1):
+        a2.axhline(sign * V_MAX, color=speed_colour, lw=1, ls=(0, (2, 3)))
+        turn_axis.axhline(sign * W_MAX, color=turn_colour, lw=1, ls=(0, (2, 3)))
+    a2.set_ylim(-V_MAX * 1.25, V_MAX * 1.25)
+    turn_axis.set_ylim(-W_MAX * 1.25, W_MAX * 1.25)
+    a2.set_xlabel("time (s)")
+    a2.set_ylabel("speed $v$ (m/s), solid", color=speed_colour)
+    a2.tick_params(axis="y", labelcolor=speed_colour)
+    turn_axis.set_ylabel("turn rate $\\omega$ (rad/s), dashed", color=turn_colour)
+    turn_axis.tick_params(axis="y", labelcolor=turn_colour)
+    a2.set_title("what it was told to do (each limit dotted in its own colour)",
+                 fontsize=10)
+    lines = a2.get_lines() + turn_axis.get_lines()
+    keep = [ln for ln in lines if ln.get_label() and not ln.get_label().startswith("_")]
+    a2.legend(keep, [ln.get_label() for ln in keep], fontsize=8, loc="lower right")
+    a2.grid(alpha=0.25)
 
     a3.axhline(0.02, color="#2e7d32", lw=1, ls=(0, (2, 3)))
     a3.text(0.02, 0.024, "at the goal", fontsize=8, color="#2e7d32")
